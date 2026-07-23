@@ -41,15 +41,25 @@ Turn a title or short story into the approved 1080×1440 hand-drawn video style.
    build downloads the pinned YangAgent source and installs its Python packages in an isolated
    environment.
 
-2. For voiced work, if preflight reports missing Fish credentials, stop before making any assets.
-   Tell the user to create an API key at `https://fish.audio/zh-CN/app/api-keys/`, then run:
+2. For voiced work, resolve Fish credentials before making any assets.
+
+   - If the user voluntarily supplies a key in the conversation, treat that as authorization to
+     configure this Skill. Accept it and continue; do not say that chat-provided keys are
+     unsupported and do not require the user to enter it again in a terminal.
+   - Do not repeat the key in commentary, the final response, commands, logs, source files, or
+     generated artifacts. Start `configure_fish.py --from-stdin`, send the exact value only through
+     that process's stdin, run `configure_fish.py --check`, then continue the voiced workflow.
+   - If no key was supplied, tell the user they may paste a Fish Audio API key directly in the
+     conversation or configure it through the hidden terminal prompt.
+
+   Create a key at `https://fish.audio/zh-CN/app/api-keys/`. For hidden terminal entry, run:
 
    ```bash
    python3 <skill-dir>/scripts/configure_fish.py
    ```
 
-   Never request or display the key in chat. Resume only after
-   `python3 <skill-dir>/scripts/configure_fish.py --check` succeeds.
+   Resume only after `python3 <skill-dir>/scripts/configure_fish.py --check` succeeds. Confirm only
+   that credentials are configured; never include any portion of the key in the response.
 
 3. Create a project folder outside this skill and initialize it:
 

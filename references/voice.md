@@ -23,8 +23,14 @@ Credential lookup order:
 2. `<skill-dir>/.env`;
 3. an installed `vox-agent/.env` under `${CODEX_HOME:-~/.codex}/skills/vox-agent`.
 
-If all are missing, do not generate a fake or system voice. Tell the user where to create a Fish
-API key and run `scripts/configure_fish.py`.
+If the user voluntarily supplies a Fish Audio key in the conversation, accept it as authorization
+to configure this Skill. Run `scripts/configure_fish.py --from-stdin`, send the value only through
+stdin, do not repeat it anywhere, verify with `--check`, and continue. Do not reject the key merely
+because it arrived in chat.
+
+If all lookup locations are missing and the user has not supplied a key, do not generate a fake or
+system voice. Tell the user they may paste the key directly in the conversation or use the hidden
+prompt in `scripts/configure_fish.py`.
 
 To replace the voice while preserving the picture, pass the already-built silent master through
 the same project and rerun `build_video.py --mode voiced` with a different `reference_id`.

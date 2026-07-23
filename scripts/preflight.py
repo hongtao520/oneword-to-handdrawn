@@ -21,7 +21,8 @@ def main() -> None:
         skill_dir = Path(__file__).resolve().parent.parent
         raise SystemExit(
             "Fish Audio API key is required for the voiced version.\n"
-            "Create one at https://fish.audio/zh-CN/app/api-keys/ and run:\n"
+            "Create one at https://fish.audio/zh-CN/app/api-keys/.\n"
+            "You may paste the key directly into the Codex conversation, or run:\n"
             f"python3 {skill_dir / 'scripts' / 'configure_fish.py'}\n"
             "Then rerun this preflight. Use --mode silent if narration is not needed."
         )

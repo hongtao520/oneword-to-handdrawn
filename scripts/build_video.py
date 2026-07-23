@@ -345,7 +345,8 @@ def generate_voice_files(
     if not key:
         raise SystemExit(
             "Fish Audio API key is not configured.\n"
-            "Create one at https://fish.audio/zh-CN/app/api-keys/ and run:\n"
+            "Create one at https://fish.audio/zh-CN/app/api-keys/.\n"
+            "Paste it directly into the Codex conversation, or run:\n"
             f"python3 {SKILL_DIR / 'scripts' / 'configure_fish.py'}"
         )
     audio_dir = project / "work" / "audio"
@@ -620,7 +621,8 @@ def main() -> None:
     if args.mode == "voiced" and not find_key():
         raise SystemExit(
             "Fish Audio API key is not configured.\n"
-            "Create one at https://fish.audio/zh-CN/app/api-keys/ and run:\n"
+            "Create one at https://fish.audio/zh-CN/app/api-keys/.\n"
+            "Paste it directly into the Codex conversation, or run:\n"
             f"python3 {SKILL_DIR / 'scripts' / 'configure_fish.py'}"
         )
     cache_dir = (

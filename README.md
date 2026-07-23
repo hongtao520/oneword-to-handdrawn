@@ -100,11 +100,14 @@ Fish Audio 的可用额度、计费和模型政策以用户自己的 Fish Audio 
 
 1. 登录 [Fish Audio API 密钥页面](https://fish.audio/zh-CN/app/api-keys/)。
 2. 点击右上角“创建 API 密钥”。
-3. 复制生成的密钥，然后使用下面的配置器保存；不要把密钥粘贴到聊天或 GitHub。
+3. 复制生成的密钥，然后选择下面任意一种方式配置。
 
 ![Fish Audio API Key 获取位置](./assets/setup/fish-api-key.png)
 
-进入 Skill 目录后运行：
+方式一：直接把密钥发送给正在执行本 Skill 的 Codex。Codex 会将它保存到本地配置，
+不会在回复中复述密钥，然后继续制作配音版本。
+
+方式二：进入 Skill 目录，使用终端隐藏输入：
 
 ```bash
 python3 scripts/configure_fish.py
@@ -133,7 +136,8 @@ python3 scripts/configure_fish.py --check
 本 Skill 会自动复用其中的 `FISH_API_KEY`，不需要重复输入。
 
 如果配音模式没有找到密钥，Skill 会在生成故事素材前停止，并提示密钥创建地址和
-配置命令；不会自动换成其他音色或系统语音。
+两种配置方法。如果用户在对话中直接提供密钥，Skill 会立即完成本地配置并继续，
+不会再要求用户转到终端重复输入，也不会自动换成其他音色或系统语音。
 
 ### 更换音色
 

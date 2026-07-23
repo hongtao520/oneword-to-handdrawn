@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 import getpass
 import os
+import sys
 from pathlib import Path
 
 
@@ -53,7 +54,15 @@ def save_key(key: str) -> None:
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--check", action="store_true")
+    parser.add_argument(
+        "--from-stdin",
+        action="store_true",
+        help="Read one Fish Audio API key from stdin without echoing it.",
+    )
     args = parser.parse_args()
+
+    if args.check and args.from_stdin:
+        raise SystemExit("--check and --from-stdin cannot be used together.")
 
     if args.check:
         print(f"credential file: {ENV_FILE}")
@@ -63,9 +72,12 @@ def main() -> None:
         print("Fish Audio voice: missing")
         raise SystemExit(1)
 
-    print("Create a Fish Audio API key at:")
-    print("https://fish.audio/zh-CN/app/api-keys/")
-    key = getpass.getpass("Fish Audio API Key (hidden): ").strip()
+    if args.from_stdin:
+        key = sys.stdin.readline().strip()
+    else:
+        print("Create a Fish Audio API key at:")
+        print("https://fish.audio/zh-CN/app/api-keys/")
+        key = getpass.getpass("Fish Audio API Key (hidden): ").strip()
     if not key:
         raise SystemExit("No key entered; configuration unchanged.")
     save_key(key)
