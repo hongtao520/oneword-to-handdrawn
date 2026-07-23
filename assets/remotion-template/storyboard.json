@@ -1,0 +1,14 @@
+{
+  "title": "placeholder",
+  "fps": 30,
+  "width": 1080,
+  "height": 1440,
+  "scenes": [
+    {
+      "id": "01",
+      "caption": "占位文字",
+      "duration_frames": 90,
+      "video": "clips/01.mp4"
+    }
+  ]
+}

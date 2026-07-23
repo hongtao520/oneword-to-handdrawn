@@ -1,0 +1,4 @@
+interface:
+  display_name: "One Word to Hand-drawn"
+  short_description: "一句话生成原版文字揭示、彩色白板手绘和可选配音的故事视频"
+  default_prompt: "使用 $oneword-to-handdrawn 把这个主题制作成有声手绘故事视频。"
