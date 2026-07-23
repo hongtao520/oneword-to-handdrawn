@@ -25,7 +25,33 @@ Turn a title or short story into the approved 1080×1440 hand-drawn video style.
 
 ## Workflow
 
-1. Create a project folder outside this skill and initialize it:
+1. Choose the mode, then run preflight before writing the story or generating images:
+
+   ```bash
+   # Default voiced version: checks Fish first, then privately installs missing runtimes
+   python3 <skill-dir>/scripts/preflight.py --mode voiced
+
+   # Silent version: no Fish key required
+   python3 <skill-dir>/scripts/preflight.py --mode silent
+   ```
+
+   Preflight uses an existing Node.js 20+ and FFmpeg when available. Otherwise it downloads
+   private copies under `~/.cache/oneword-to-handdrawn/`; do not make the user install global
+   packages manually. The build also runs this dependency bootstrap as a safety net. The first
+   build downloads the pinned YangAgent source and installs its Python packages in an isolated
+   environment.
+
+2. For voiced work, if preflight reports missing Fish credentials, stop before making any assets.
+   Tell the user to create an API key at `https://fish.audio/zh-CN/app/api-keys/`, then run:
+
+   ```bash
+   python3 <skill-dir>/scripts/configure_fish.py
+   ```
+
+   Never request or display the key in chat. Resume only after
+   `python3 <skill-dir>/scripts/configure_fish.py --check` succeeds.
+
+3. Create a project folder outside this skill and initialize it:
 
    ```bash
    python3 <skill-dir>/scripts/init_project.py \
@@ -34,21 +60,21 @@ Turn a title or short story into the approved 1080×1440 hand-drawn video style.
      --scenes 7
    ```
 
-2. Write `<project>/storyboard.json` using [storyboard.md](references/storyboard.md).
+4. Write `<project>/storyboard.json` using [storyboard.md](references/storyboard.md).
    Preserve supplied wording. For a topic or idiom, write a concise 6–8 scene story with one
    narration sentence and one short handwritten caption per scene.
 
-3. Generate one square color illustration for every scene. Read
+5. Generate one square color illustration for every scene. Read
    [image-prompts.md](references/image-prompts.md) before generating. Save exact files under
    `<project>/images/` as listed in the storyboard. Do not put text inside images.
 
-4. Validate inputs:
+6. Validate inputs:
 
    ```bash
    python3 <skill-dir>/scripts/validate_project.py /absolute/path/to/project
    ```
 
-5. Build:
+7. Build:
 
    ```bash
    # Default voiced version
@@ -58,21 +84,10 @@ Turn a title or short story into the approved 1080×1440 hand-drawn video style.
    python3 <skill-dir>/scripts/build_video.py /absolute/path/to/project --mode silent
    ```
 
-   The first run downloads the exact approved YangAgent repository revision and prepares its
-   isolated Python environment. Do not edit or replace that upstream algorithm.
-
-6. For voiced work, if Fish credentials are missing, stop and tell the user to create an API key
-   at `https://fish.audio/zh-CN/app/api-keys/`, then run:
-
-   ```bash
-   python3 <skill-dir>/scripts/configure_fish.py
-   ```
-
-   Never request or display the key in chat. Resume the voiced build only after
-   `python3 <skill-dir>/scripts/configure_fish.py --check` succeeds. Read
+   Do not edit or replace the pinned upstream drawing algorithm. Read
    [voice.md](references/voice.md) when changing voices.
 
-7. Inspect at least one early drawing frame, one completed frame, and every scene cut. Confirm:
+8. Inspect at least one early drawing frame, one completed frame, and every scene cut. Confirm:
 
    - captions use `TextWipe` and contain no hand overlay;
    - the hand stays inside the illustration region;

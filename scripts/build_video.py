@@ -7,18 +7,20 @@ import argparse
 import hashlib
 import json
 import math
-import os
 import re
 import shutil
 import subprocess
 import sys
+import tempfile
 import urllib.error
 import urllib.request
 import wave
+import zipfile
 from pathlib import Path
 from typing import Any
 
 from configure_fish import find_key
+from setup_dependencies import default_cache_dir, ensure_dependencies
 from validate_project import load_project, validate
 
 
@@ -61,13 +63,6 @@ def run(
     )
 
 
-def require_binary(name: str) -> str:
-    value = shutil.which(name)
-    if not value:
-        raise SystemExit(f"Missing required command: {name}")
-    return value
-
-
 def safe_scene_id(value: Any, index: int) -> str:
     scene_id = str(value or f"{index:02d}").strip()
     if not re.fullmatch(r"[A-Za-z0-9_-]+", scene_id):
@@ -100,18 +95,58 @@ def wav_duration(path: Path) -> float:
 
 
 def ensure_whiteboard(cache_dir: Path) -> tuple[Path, str]:
-    git = require_binary("git")
     checkout = cache_dir / f"whiteboard-animation-skill-{WHITEBOARD_COMMIT[:8]}"
-    if not checkout.exists():
+    marker = checkout / ".oneword-source.json"
+    source_valid = False
+    if marker.is_file():
+        try:
+            source_valid = (
+                json.loads(marker.read_text(encoding="utf-8")).get("commit")
+                == WHITEBOARD_COMMIT
+            )
+        except json.JSONDecodeError:
+            source_valid = False
+    if not source_valid:
         cache_dir.mkdir(parents=True, exist_ok=True)
         print(f"Downloading approved YangAgent revision -> {checkout}")
-        run([git, "clone", "--filter=blob:none", "--no-checkout", WHITEBOARD_REPO, str(checkout)])
-        run([git, "checkout", WHITEBOARD_COMMIT], cwd=checkout)
-    head = run([git, "rev-parse", "HEAD"], cwd=checkout, capture=True).stdout.strip()
-    if head != WHITEBOARD_COMMIT:
-        raise SystemExit(
-            f"Unexpected YangAgent revision in {checkout}: {head}; "
-            f"expected {WHITEBOARD_COMMIT}"
+        archive_url = (
+            "https://github.com/yangagent/whiteboard-animation-skill/"
+            f"archive/{WHITEBOARD_COMMIT}.zip"
+        )
+        with tempfile.TemporaryDirectory(dir=cache_dir) as temporary:
+            temp_dir = Path(temporary)
+            archive = temp_dir / "source.zip"
+            request = urllib.request.Request(
+                archive_url,
+                headers={"User-Agent": "oneword-to-handdrawn source installer"},
+            )
+            with urllib.request.urlopen(request, timeout=180) as response:
+                archive.write_bytes(response.read())
+            with zipfile.ZipFile(archive) as bundle:
+                destination_root = temp_dir.resolve()
+                for name in bundle.namelist():
+                    target = (temp_dir / name).resolve()
+                    if (
+                        destination_root not in target.parents
+                        and target != destination_root
+                    ):
+                        raise SystemExit("Unsafe path found in YangAgent archive.")
+                bundle.extractall(temp_dir)
+            extracted = temp_dir / (
+                f"whiteboard-animation-skill-{WHITEBOARD_COMMIT}"
+            )
+            if not extracted.is_dir():
+                raise SystemExit("YangAgent archive has an unexpected layout.")
+            if checkout.exists():
+                shutil.rmtree(checkout)
+            shutil.move(str(extracted), str(checkout))
+        marker.write_text(
+            json.dumps(
+                {"repository": WHITEBOARD_REPO, "commit": WHITEBOARD_COMMIT},
+                indent=2,
+            )
+            + "\n",
+            encoding="utf-8",
         )
 
     whiteboard_skill = checkout / "skills" / "whiteboard-animation"
@@ -404,9 +439,9 @@ def render_silent(
     scene_frames: list[int],
     clips: list[Path],
     output: Path,
+    npm: str,
+    npx: str,
 ) -> None:
-    require_binary("npm")
-    require_binary("npx")
     renderer = project / ".oneword-renderer"
     shutil.copytree(TEMPLATE_DIR, renderer, dirs_exist_ok=True)
     public_clips = renderer / "public" / "clips"
@@ -443,11 +478,11 @@ def render_silent(
     )
     if not (renderer / "node_modules").is_dir():
         print("Installing isolated Remotion dependencies...")
-        run(["npm", "install", "--no-audit", "--no-fund"], cwd=renderer)
+        run([npm, "install", "--no-audit", "--no-fund"], cwd=renderer)
     output.parent.mkdir(parents=True, exist_ok=True)
     run(
         [
-            "npx",
+            npx,
             "remotion",
             "render",
             "src/index.ts",
@@ -573,6 +608,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--rebuild-picture", action="store_true")
     parser.add_argument("--regenerate-voice", action="store_true")
     parser.add_argument("--cache-dir")
+    parser.add_argument("--no-install-deps", action="store_true")
     return parser.parse_args()
 
 
@@ -581,7 +617,19 @@ def main() -> None:
     project = Path(args.project).expanduser().resolve()
     validate(project)
     storyboard, scenes = load_project(project)
-    ffmpeg = require_binary("ffmpeg")
+    if args.mode == "voiced" and not find_key():
+        raise SystemExit(
+            "Fish Audio API key is not configured.\n"
+            "Create one at https://fish.audio/zh-CN/app/api-keys/ and run:\n"
+            f"python3 {SKILL_DIR / 'scripts' / 'configure_fish.py'}"
+        )
+    cache_dir = (
+        Path(args.cache_dir).expanduser().resolve()
+        if args.cache_dir
+        else default_cache_dir()
+    )
+    runtime = ensure_dependencies(cache_dir, install=not args.no_install_deps)
+    ffmpeg = runtime["ffmpeg"]
 
     fingerprint = picture_fingerprint(project, scenes)
     out_dir = project / "out"
@@ -630,16 +678,6 @@ def main() -> None:
         scene_frames = [estimate_silent_frames(scene) for scene in scenes]
 
     if not picture_locked:
-        cache_dir = (
-            Path(args.cache_dir).expanduser().resolve()
-            if args.cache_dir
-            else Path(
-                os.environ.get(
-                    "ONEWORD_HANDDRAWN_CACHE",
-                    Path.home() / ".cache" / "oneword-to-handdrawn",
-                )
-            ).expanduser()
-        )
         whiteboard_skill, python_path = ensure_whiteboard(cache_dir)
         prepared_dir = work_dir / "prepared"
         raw_dir = work_dir / "raw"
@@ -661,7 +699,15 @@ def main() -> None:
             clip = clips_dir / f"{scene_id}.mp4"
             retime_whiteboard(ffmpeg, raw, clip, frames)
             clips.append(clip)
-        render_silent(project, scenes, scene_frames, clips, silent_output)
+        render_silent(
+            project,
+            scenes,
+            scene_frames,
+            clips,
+            silent_output,
+            runtime["npm"],
+            runtime["npx"],
+        )
 
     voice_timings: list[dict] = []
     final_output = silent_output
